@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>推し×本フォトフレーム</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #f3f4f6;
+            color: black;
+            overflow-x: hidden;
+            -webkit-touch-callout: none;
+        }
+        .main-card {
+            background-color: white;
+            border-radius: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            margin: 1rem auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+        }
+        .frame-overlay {
+            pointer-events: none;
+            z-index: 10;
+        }
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #000;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .frame-thumb {
+            cursor: pointer;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            transition: all 0.2s;
+            width: 3.5rem;
+            height: 3.5rem;
+            flex-shrink: 0;
+        }
+        .frame-thumb.active { border-color: #000; transform: scale(1.05); }
+
+        .photo-fixed-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            margin-bottom: 20px;
+            background-color: #000;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 2px solid #000;
+        }
+
+        .info-scroll-area {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px;
+            margin-top: 10px;
+            border-top: 1px solid #f1f1f1;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .model-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f8f8f8;
+        }
+
+        .recommendation-box {
+            background-color: #f9f9f9;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-4">
+
+    <div class="main-card">
+        <div class="content-container flex flex-col w-full">
+            <h1 class="text-2xl font-bold text-center mb-6 tracking-tighter">推し×本フォトフレーム</h1>
+
+            <div class="photo-fixed-box">
+                <div id="viewfinder" class="absolute inset-0 bg-black overflow-hidden">
+                    <video id="video-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+                    <img id="frame-preview" class="absolute inset-0 w-full h-full object-contain frame-overlay hidden" src="" alt="">
+                    <img id="final-image" class="absolute inset-0 w-full h-full object-cover z-30 hidden" src="" alt="">
+
+                    <div id="start-overlay" class="absolute inset-0 flex items-center justify-center z-50 bg-black">
+                        <button type="button" id="start-camera-btn" class="px-8 py-4 border border-white text-white font-bold text-xs tracking-widest uppercase hover:bg-white hover:text-black transition-colors">
+                            カメラを起動
+                        </button>
+                    </div>
+
+                    <div id="loading-overlay" class="absolute inset-0 flex items-center justify-center z-40 bg-white hidden text-xs font-bold uppercase">
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="loader"></div>
+                            <span id="loading-text">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="controls-wrapper" class="w-full flex flex-col space-y-4">
+                <div id="frame-selector-section" class="hidden">
+                    <div class="flex justify-start gap-3 overflow-x-auto py-2 px-1" id="thumb-container">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+
+                <div id="capture-section" class="hidden">
+                    <button type="button" id="capture-btn" class="w-full py-4 bg-black text-white font-bold rounded-full text-sm hover:opacity-80 transition-opacity">
+                        撮影する
+                    </button>
+                </div>
+
+                <div id="info-section" class="hidden">
+                    <p class="text-[10px] font-bold text-neutral-400 px-1">モデル情報（スクロールで表示）</p>
+                    <div id="model-list" class="info-scroll-area"></div>
+                </div>
+
+                <div id="result-section" class="hidden flex flex-col">
+                    <p id="save-instruction" class="text-[10px] font-bold text-center text-neutral-400 mb-4">画像を長押しで保存</p>
+                    <div class="flex flex-col space-y-3">
+                        <button type="button" id="share-x-btn" class="w-full py-4 bg-black text-white font-bold rounded-full text-sm hover:opacity-80 transition-opacity">
+                            Xに投稿する
+                        </button>
+                        <button type="button" id="retake-btn" class="w-full py-4 border border-black text-black font-bold rounded-full text-sm">
+                            撮り直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="merge-canvas" class="hidden"></canvas>
+
+    <script>
+        const frameData = [
+            {
+                url: "https://www.dropbox.com/scl/fi/tsfn4w2z73pso3j4mdllv/Frame1.png?rlkey=256jeyhn84ab2gsgn571qut8u&st=iotxi5dk&raw=1",
+                models: [
+                    { name: "さやま まや(1F)", youtube: "https://youtube.com/@sayamamaya", x: "https://x.com/sayama_live", book: "『姑獲鳥の夏』/ 京極夏彦" },
+                    { name: "花傘あるみ(2F)", youtube: "https://youtube.com/@arumihanagasa", x: "https://x.com/Arumi_Hanagasa", book: "『エッセンシャル思考 最少の時間で成果を最大にする』/グレッグ・マキューン" },
+                    { name: "歌与ポメ(3F)", youtube: "https://youtube.com/@utayo_pome", x: "https://x.com/pome_utayo", book: "『眠れなくなるほど面白い 図解 カラスの話』/松原始" },
+                    { name: "絣華ミタマ(4F)", youtube: "https://youtube.com/@henge_mitama", x: "https://x.com/henge_mitama", book: "『ねこいる！』/たなかひかる" },
+                    { name: "風見カプラ(5F)", youtube: "https://youtube.com/@kapra_kazami", x: "https://x.com/kazami_kapra", book: "『呪われたナターシャ : 現代ロシアにおける呪術の民族誌』/松尾 恒一" },
+                    { name: "やすみ(6F)", youtube: "https://youtube.com/@yasumi_ch", x: "https://x.com/_Yasumichan_", book: "『ハーモニー』/伊藤 計劃" },
+                    { name: "ほのかかのん(7F)", youtube: "https://youtube.com/channel/UCrj3vvhicsxH-Q4EbaMJ2iw", x: "https://x.com/honokano_V", book: "『悪役令嬢の中の人～断罪された転生者のため嘘つきヒロインに復讐いたします～』/白梅ナズナ / まきぶろ / 紫真依" },
+                    { name: "紫月かなで(8F)", youtube: "https://youtube.com/@kanadeshizuki", x: "https://x.com/kanade_shizuki", book: "『アンダー・ユア・ベッド』/大石圭" }
+                ]
+            },
+            {
+                url: "https://www.dropbox.com/scl/fi/e0ahqa4s0vev35avnnpnz/Frame2.png?rlkey=xifacveupr1cq6y7z3n2lr4dm&st=3qxxj8zw&raw=1",
+                models: [
+                    { name: "おばけなの", youtube: "https://www.youtube.com/channel/UCRxDYBcwwteYzm-1hmlAUhw", x: "https://x.com/obakenan0"},
+                    { name: "めた氏", youtube: "https://www.youtube.com/channel/UCHE0FEUxGYBxubEVxIzxXaw", x: "https://x.com/metashi_v"},
+                    { name: "小花衣もみじ", youtube: "https://www.youtube.com/channel/UCuG9Rlxaji2-8Mcw9LJ5UqQ", x: "https://x.com/kohanaimomiji"},
+                    { name: "国愛めみ", youtube: "https://www.youtube.com/channel/UCOkgVkf6Q6fJzEKW2IChvoA", x: "https://x.com/kokuoumemi"},
+                    { name: "えむ子まる", youtube: "https://www.youtube.com/channel/UCTF7ZwBGNiQrRDRSlS_V1eg", x: "https://x.com/m___201810"},
+                    { name: "星のミナチィ", youtube: "https://www.youtube.com/channel/UCWVqnJnOC-yoNIQJhMpdUjg", x: "https://x.com/hoshino_minachi"},
+                    { name: "愛神アプロ", youtube: "https://www.youtube.com/channel/UC0mbQz3Lx-0bn65zJrG7deg", x: "https://x.com/apuro18"},
+                    { name: "花咲すみれ", youtube: "https://www.youtube.com/channel/UCSBEnELOnKNtkjENIko0Q8A", x: "https://x.com/sp_sumirechan"}
+                ]
+            },
+            {
+                url: "https://www.dropbox.com/scl/fi/317r62a67ybc99vxb8jnd/Frame3.png?rlkey=to5hjdumxp9mo0c9a0fijmff1&st=r38utagx&raw=1",
+                models: [
+                    { name: "猫谷花火", youtube: "https://www.youtube.com/@NekotaniHanabi", x: "https://x.com/nekotanihanabi"},
+                    { name: "本ノ宮栞", youtube: "https://web.iriam.app/s/user/4a8YmO8E5M?uuid=fe32ca25", x: "https://x.com/honnomiyashiori"},
+                    { name: "書三代ガクト", youtube: "https://www.youtube.com/channel/UCBSu5tL8nrZjl5Zv5G1xuhg", x: "https://x.com/sho3dai_gct"},
+                    { name: "つじみやび", youtube: "https://www.youtube.com/channel/UCLa5MHNqHmJd69wzh2-90pA", x: "https://x.com/miyabitsuji2525"},
+                    { name: "あおすずあさぎ", youtube: "https://www.youtube.com/channel/UCHPvqEpTP6QZ_PnPr8MYhxA", x: "https://x.com/asagi_0501_himo"},
+                    { name: "天野蒼空", youtube: "https://www.youtube.com/channel/UCU35q4y9KOezw8Ml4TJrJFA", x: "https://x.com/sora_senden_777"},
+                    { name: "しろねこ亭ねこすけ", youtube: "https://www.youtube.com/@shironeko_tei", x: "https://x.com/shironeko_oo"},
+                    { name: "朱月星華", youtube: "https://www.youtube.com/@akaduki_seika", x: "https://x.com/seika_akaduki"}
+                ]
+            },
+            {
+                url: "https://www.dropbox.com/scl/fi/zx2y7f8irue7dn9g158n6/Frame4.png?rlkey=3fc2thvzit96nx0q1i8k2vz3k&st=0zfpzobn&raw=1",
+                models: [
+                    { name: "七八くまの", youtube: "https://www.youtube.com/channel/UC_4x4gCnCkJ2o-VINN0AJ6A", x: "https://x.com/kumano_78"},
+                    { name: "雨灯てとら", youtube: "https://youtube.com/@yawaraka_occult", x: "https://x.com/yawaoka_ch"},
+                    { name: "エクセルイルカ", youtube: "https://www.youtube.com/channel/UCDRg3SWWTCqx3RuM9B-v5xA", x: "https://x.com/exceliruka"},
+                    { name: "苺月ありさ", youtube: "https://www.youtube.com/channel/UCZxtT5uupUOIRf8X_f4DizA", x: "https://x.com/arisa_no_ichigo"},
+                    { name: "それゆけゆめこ", youtube: "https://www.youtube.com/channel/UC3tOmGJANHE4J5ALfyVRqsg", x: "https://x.com/soreyukeyumeko?s=21"},
+                    { name: "陽乃ぴよの", youtube: "https://youtube.com/@hino_piyono", x: "https://x.com/__piyono"},
+                    { name: "宵夢ふわむ", youtube: "https://youtube.com/@yoiyume_fuwamu", x: "https://x.com/yoiyume_fuwamu?s=21"},
+                    { name: "警戒ちゃん", youtube: "https://youtube.com/@keikai_gumin?si=327JsQ7IVJscEwee", x: "https://x.com/keikai_gumin?s=21"},
+                ]
+            }
+        ];
+
+        const video = document.getElementById('video-preview');
+        const framePreview = document.getElementById('frame-preview');
+        const finalImage = document.getElementById('final-image');
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const startOverlay = document.getElementById('start-overlay');
+        const captureBtn = document.getElementById('capture-btn');
+        const retakeBtn = document.getElementById('retake-btn');
+        const shareXBtn = document.getElementById('share-x-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        
+        const frameSelectorSection = document.getElementById('frame-selector-section');
+        const infoSection = document.getElementById('info-section');
+        const modelList = document.getElementById('model-list');
+        const captureSection = document.getElementById('capture-section');
+        const resultSection = document.getElementById('result-section');
+        const thumbContainer = document.getElementById('thumb-container');
+
+        let stream = null;
+        let frameImg = new Image();
+        let isFrameLoaded = false;
+        let currentFrameIndex = 0;
+
+        function getSafeUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                urlObj.searchParams.set('raw', '1');
+                return urlObj.toString();
+            } catch (e) {
+                return url;
+            }
+        }
+
+        function getProxiedUrl(url) {
+            return `https://images.weserv.nl/?url=${encodeURIComponent(getSafeUrl(url))}`;
+        }
+
+        startCameraBtn.onclick = async () => {
+            startOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = "カメラ起動中...";
+            
+            const success = await initCamera();
+            if (success) {
+                renderThumbs();
+                loadFrame(0);
+            } else {
+                loadingText.textContent = "カメラへのアクセスを許可してください。";
+                setTimeout(() => startOverlay.classList.remove('hidden'), 2000);
+            }
+        };
+
+        async function initCamera() {
+            try {
+                const constraints = { 
+                    video: { 
+                        facingMode: "environment", 
+                        width: { ideal: 1080 }, 
+                        height: { ideal: 1080 } 
+                    } 
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                return true;
+            } catch (err) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = stream;
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+        }
+
+        function renderThumbs() {
+            thumbContainer.innerHTML = '';
+            frameData.forEach((data, index) => {
+                const thumb = document.createElement('div');
+                thumb.id = `thumb-${index}`;
+                thumb.className = `frame-thumb overflow-hidden flex items-center justify-center bg-gray-50 ${index === 0 ? 'active' : ''}`;
+                
+                const img = document.createElement('img');
+                img.className = "w-full h-full object-contain";
+                img.src = getProxiedUrl(data.url);
+                img.loading = "lazy";
+                
+                thumb.appendChild(img);
+                thumb.onclick = () => {
+                    document.querySelectorAll('.frame-thumb').forEach(t => t.classList.remove('active'));
+                    thumb.classList.add('active');
+                    loadFrame(index);
+                };
+                thumbContainer.appendChild(thumb);
+            });
+        }
+
+        function loadFrame(index) {
+            currentFrameIndex = index;
+            isFrameLoaded = false;
+            loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = "フレーム読込中...";
+            
+            const data = frameData[index];
+            const proxiedUrl = getProxiedUrl(data.url);
+            
+            modelList.innerHTML = '';
+            if (data.models && data.models.length > 0) {
+                data.models.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'model-item';
+                    
+                    // bookプロパティがある場合のみ推薦枠を表示
+                    const bookHtml = m.book 
+                        ? `<div class="recommendation-box text-[11px] font-bold">${m.book}</div>` 
+                        : '';
+
+                    item.innerHTML = `
+                        <div class="text-[11px] font-medium text-neutral-600 mb-2">モデル：<span class="font-bold text-black">${m.name}</span></div>
+                        <div class="flex gap-2">
+                            <a href="${m.youtube}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">YouTube</a>
+                            <a href="${m.x}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">X</a>
+                        </div>
+                        ${bookHtml}
+                    `;
+                    modelList.appendChild(item);
+                });
+            } else {
+                modelList.innerHTML = '<p class="text-xs text-neutral-400 py-4 text-center">モデル情報はありません</p>';
+            }
+
+            const timeout = setTimeout(() => {
+                if (!isFrameLoaded) {
+                    onFrameReady(proxiedUrl); 
+                }
+            }, 8000);
+
+            frameImg = new Image();
+            frameImg.crossOrigin = "anonymous";
+            frameImg.onload = () => {
+                clearTimeout(timeout);
+                onFrameReady(proxiedUrl);
+            };
+            frameImg.onerror = () => {
+                clearTimeout(timeout);
+                loadingText.textContent = "フレームの読み込みに失敗しました。";
+                setTimeout(() => loadingOverlay.classList.add('hidden'), 2000);
+            };
+            frameImg.src = proxiedUrl;
+        }
+
+        function onFrameReady(url) {
+            framePreview.src = url;
+            isFrameLoaded = true;
+            loadingOverlay.classList.add('hidden');
+            framePreview.classList.remove('hidden');
+            frameSelectorSection.classList.remove('hidden');
+            infoSection.classList.remove('hidden');
+            captureSection.classList.remove('hidden');
+        }
+
+        captureBtn.onclick = () => {
+            const canvas = document.getElementById('merge-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1080;
+            canvas.height = 1080;
+
+            const vW = video.videoWidth;
+            const vH = video.videoHeight;
+            const minSize = Math.min(vW, vH);
+            const sx = (vW - minSize) / 2;
+            const sy = (vH - minSize) / 2;
+
+            ctx.drawImage(video, sx, sy, minSize, minSize, 0, 0, 1080, 1080);
+
+            if (isFrameLoaded) {
+                ctx.drawImage(frameImg, 0, 0, 1080, 1080);
+            }
+
+            finalImage.src = canvas.toDataURL('image/jpeg', 0.9);
+            finalImage.classList.remove('hidden');
+            resultSection.classList.remove('hidden');
+            frameSelectorSection.classList.add('hidden');
+            infoSection.classList.add('hidden');
+            captureSection.classList.add('hidden');
+            video.classList.add('hidden');
+            framePreview.classList.add('hidden');
+        };
+
+        retakeBtn.onclick = () => {
+            finalImage.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            frameSelectorSection.classList.remove('hidden');
+            infoSection.classList.remove('hidden');
+            captureSection.classList.remove('hidden');
+            framePreview.classList.remove('hidden');
+            video.classList.remove('hidden');
+        };
+
+        shareXBtn.onclick = () => {
+            const text = encodeURIComponent("推しと本のフォトフレームで撮影しました！ #推し本フォトフレーム");
+            const intentUrl = `https://twitter.com/intent/tweet?text=${text}`;
+            window.open(intentUrl, '_blank');
+        };
+    </script>
+</body>
+</html>
