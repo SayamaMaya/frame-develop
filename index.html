@@ -322,8 +322,8 @@
                     item.innerHTML = `
                         <div class="text-[11px] font-medium text-neutral-600 mb-2">モデル：<span class="font-bold text-black">${m.name}</span></div>
                         <div class="flex gap-2">
-                            <a href="${m.youtube}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">YouTube</a>
-                            <a href="${m.x}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">X</a>
+                            <a href="${m.youtube}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">チャンネル登録</a>
+                            <a href="${m.x}" target="_blank" class="flex-1 py-2 bg-white border border-gray-200 rounded-full text-[10px] text-center font-bold">Xフォロー</a>
                         </div>
                         ${bookHtml}
                     `;
@@ -402,7 +402,7 @@
         };
 
         shareXBtn.onclick = () => {
-            const text = encodeURIComponent("推しと本のフォトフレームで撮影しました！ #推し本フォトフレーム");
+            const text = encodeURIComponent("#書泉バーチャルボイスラリー クリアしました！\n#未来V書店");
             const intentUrl = `https://twitter.com/intent/tweet?text=${text}`;
             window.open(intentUrl, '_blank');
         };
