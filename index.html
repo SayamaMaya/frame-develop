@@ -114,7 +114,6 @@
             <div id="controls-wrapper" class="w-full flex flex-col space-y-4">
                 <div id="frame-selector-section" class="hidden">
                     <div class="flex justify-start gap-3 overflow-x-auto py-2 px-1" id="thumb-container">
-                        <!-- JSで動的に生成 -->
                     </div>
                 </div>
 
@@ -130,7 +129,7 @@
                 </div>
 
                 <div id="result-section" class="hidden flex flex-col">
-                    <p id="save-instruction" class="text-[10px] font-bold text-center text-neutral-400 mb-4">撮った画像は眺めたりXにポストしてお楽しみください！</p>
+                    <p id="save-instruction" class="text-[10px] font-bold text-center text-neutral-400 mb-4">撮った画像は是非Xにポストしてお楽しみください！感想もあると嬉しいです！</p>
                     <div class="flex flex-col space-y-3">
                         <button type="button" id="save-btn" class="w-full py-4 bg-black text-white font-bold rounded-full text-sm hover:opacity-80 transition-opacity">
                             画像を保存する
@@ -412,7 +411,7 @@
         };
 
         shareXBtn.onclick = () => {
-            const text = encodeURIComponent("#書泉バーチャルボイスラリー クリアしました！\n#未来V書店");
+            const text = encodeURIComponent("#書泉バーチャルボイスラリー クリアしました！\n#未来V書店\nhttps://x.com/sayama_live/status/2050139819129672141?s=61");
             const intentUrl = `https://twitter.com/intent/tweet?text=${text}`;
             window.open(intentUrl, '_blank');
         };
